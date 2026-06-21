@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<!--
+  Collector League — Rip Night RESULT / GAME-OVER SCREEN (Portals iframe)
+  ---------------------------------------------------------------------------
+  Celebratory result screen. ORIGINAL Collector League branding, bright palette.
+  Uses the two-step handshake from the plan: static winner arrives in the URL
+  (?winner=Jason&v=1), then the iframe signals ready and the backend pushes the
+  full standings via "scores_<name>~<score>|...". Colons avoided (parser-safe).
+-->
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Collector League — Rip Night Result</title>
+<script src="https://portals-labs.github.io/portals-sdk/portals-sdk.js?v=10005456"></script>
+<style>
+  :root{ --cl-red:#E3350D; --cl-blue:#3B9DF0; --cl-yellow:#FFCB05; --cl-green:#3DBE5A;
+    --cl-ink:#0C1124; --cl-ink2:#1B2540; }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;background:transparent;overflow:hidden;
+    font-family:'Trebuchet MS','Segoe UI',sans-serif;color:#fff;}
+  .scrim{position:fixed;inset:0;display:grid;place-items:center;
+    background:radial-gradient(120% 90% at 50% 0%,rgba(227,53,13,.35),rgba(8,11,26,.86) 60%);}
+  .card{width:min(560px,94vw);background:linear-gradient(180deg,var(--cl-ink),var(--cl-ink2));
+    border:5px solid #fff;border-radius:26px;box-shadow:0 22px 60px rgba(0,0,0,.55);overflow:hidden;}
+  .crown{background:linear-gradient(90deg,var(--cl-yellow),#ffd84a);color:#3a2a00;text-align:center;
+    padding:10px;font-weight:900;letter-spacing:4px;font-size:13px;border-bottom:5px solid #fff;}
+  .win{text-align:center;padding:22px 20px 8px;}
+  .win .label{font-size:12px;letter-spacing:5px;color:var(--cl-yellow);font-weight:800;}
+  .win .name{font-size:46px;font-weight:900;margin:6px 0 2px;text-shadow:0 4px 0 rgba(0,0,0,.3);
+    background:linear-gradient(180deg,#fff,#ffe9a8);-webkit-background-clip:text;background-clip:text;color:transparent;}
+  .win .sub{color:#aeb7d2;font-size:13px;}
+  .standings{padding:8px 18px 18px;}
+  .row{display:flex;align-items:center;gap:12px;padding:9px 12px;margin:6px 0;border-radius:12px;
+    background:rgba(255,255,255,.06);}
+  .row .pos{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;font-weight:900;color:var(--cl-ink);background:#cfd8ea;}
+  .row:nth-child(1) .pos{background:var(--cl-yellow);}
+  .row:nth-child(2) .pos{background:#C8CDD4;}
+  .row:nth-child(3) .pos{background:#CD7F32;color:#fff;}
+  .row .nm{flex:1;font-weight:700;}
+  .row .sc{font-weight:900;font-size:18px;font-variant-numeric:tabular-nums;}
+  .cta{display:flex;gap:10px;padding:0 18px 20px;}
+  .cta button{flex:1;cursor:pointer;border:0;border-radius:14px;padding:13px;font-weight:900;letter-spacing:1px;color:#fff;
+    box-shadow:0 5px 0 rgba(0,0,0,.25);}
+  .cta .next{background:linear-gradient(180deg,var(--cl-red),#b5260a);}
+  .cta .share{background:linear-gradient(180deg,var(--cl-blue),#2f7fce);}
+  .cta button:active{transform:translateY(3px);box-shadow:0 2px 0 rgba(0,0,0,.25);}
+  .confetti{position:fixed;top:-12px;width:10px;height:14px;border-radius:2px;opacity:.9;animation:fall linear forwards;}
+  @keyframes fall{to{transform:translateY(108vh) rotate(540deg);opacity:.85;}}
+</style>
+</head>
+<body>
+  <div class="scrim">
+    <div class="card">
+      <div class="crown">RIP NIGHT &middot; FINAL RESULT</div>
+      <div class="win">
+        <div class="label">TONIGHT'S CHAMPION</div>
+        <div class="name" id="winner">&mdash;</div>
+        <div class="sub" id="winsub">Top score wins the night</div>
+      </div>
+      <div class="standings" id="standings"></div>
+      <div class="cta">
+        <button class="share" id="share">SHARE RESULT</button>
+        <button class="next" id="next">NEXT RIP NIGHT</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+(function(){
+  "use strict";
+  var params = new URLSearchParams(location.search);
+  var winner = params.get('winner') || '';
+  if (winner) document.getElementById('winner').textContent = winner;
+
+  function escapeHtml(s){ return String(s).replace(/[&<>"]/g,function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+
+  function renderStandings(rows){
+    var el = document.getElementById('standings'); el.innerHTML='';
+    rows.forEach(function(r,i){
+      var row=document.createElement('div'); row.className='row';
+      row.innerHTML='<div class="pos">'+(i+1)+'</div><div class="nm">'+escapeHtml(r.name)+
+        '</div><div class="sc">'+r.score+'</div>';
+      el.appendChild(row);
+    });
+    if (rows[0] && !winner){ document.getElementById('winner').textContent = rows[0].name; }
+    if (rows[0]) document.getElementById('winsub').textContent = 'Final score ' + rows[0].score + ' points';
+  }
+
+  function parseScores(p){
+    return p.split('|').filter(Boolean).map(function(c){ var x=c.split('~');
+      return {name:x[0]||'?', score:Number(x[1])||0}; })
+      .sort(function(a,b){ return b.score-a.score; });
+  }
+
+  function confetti(){
+    var cols=['#E3350D','#3B9DF0','#FFCB05','#3DBE5A','#A040A0'];
+    for(var i=0;i<70;i++){ var d=document.createElement('div'); d.className='confetti';
+      d.style.left=Math.random()*100+'vw'; d.style.background=cols[i%cols.length];
+      d.style.animationDuration=(2.2+Math.random()*2.2)+'s'; d.style.animationDelay=(Math.random()*1.2)+'s';
+      document.body.appendChild(d); setTimeout(function(n){return function(){n.remove();};}(d),6000); }
+  }
+
+  document.getElementById('next').onclick=function(){
+    if(window.PortalsSdk&&PortalsSdk.closeIframe){ try{PortalsSdk.closeIframe();}catch(e){} }
+  };
+  document.getElementById('share').onclick=function(){
+    var w=document.getElementById('winner').textContent;
+    var txt='I played Rip Night on Collector League — '+w+' took the night!';
+    if(navigator.share){ navigator.share({text:txt}).catch(function(){}); }
+    else { try{ navigator.clipboard.writeText(txt); }catch(e){} }
+  };
+
+  if (window.PortalsSdk && PortalsSdk.setMessageListener){
+    PortalsSdk.setMessageListener(function(message){
+      var msg=message;
+      if(typeof message==='string'){ try{msg=JSON.parse(message);}catch(e){msg=message;} }
+      var s=(typeof msg==='string')?msg:JSON.stringify(msg);
+      if(s.indexOf('scores_')===0){ renderStandings(parseScores(s.substring(7))); confetti(); }
+    });
+    // ready handshake — backend pushes scores once we've mounted
+    try { PortalsSdk.sendMessageToUnity(JSON.stringify({
+      TaskName:'gameover_ready', TaskTargetState:'SetNotActiveToCompleted' })); } catch(e){}
+  }
+
+  // standalone demo
+  if (!window.PortalsSdk){
+    renderStandings(parseScores('Jason~940|Atlas~842|Nova~799|Kira~760|Echo~415'));
+    confetti();
+  }
+})();
+</script>
+</body>
+</html>

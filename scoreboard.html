@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<!--
+  Collector League — Rip Night LIVE SCOREBOARD HUD (Portals iframe)
+  ---------------------------------------------------------------------------
+  Bright Pokemon-palette HUD overlay. ORIGINAL Collector League branding only
+  (no Pokemon trademarks). Presentation only — the backend is authoritative.
+
+  MESSAGE PROTOCOL (Portals -> iframe via "Send Message To Iframes").
+  Colons break the Portals parser, so we use underscore/tilde/pipe separators:
+    pack_<index>_<total>                  e.g. pack_8_20
+    phase_<0..7>                          0 waiting,1 lineup,2 locked,3 live,
+                                          4 paused,5 finalizing,6 final,7 cancelled
+    standings_<row>|<row>|<row>...        row = <name>~<score>~<delta>~<rankChange>
+                                          e.g. standings_Atlas~842~96~0|Jason~940~265~2
+    you_<score>_<delta>                   the local player's line e.g. you_940_265
+
+  In the Portals "Send Message To Iframes" effect use pipe variables, e.g.:
+    standings_|standings_string|     pack_|packindex|_|packtotal|
+
+  iframe -> Portals (ready handshake): tells the room the HUD has mounted so the
+  backend can push the current standings (handles late joiners / reopen).
+-->
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Collector League — Live Scoreboard</title>
+<script src="https://portals-labs.github.io/portals-sdk/portals-sdk.js?v=10005456"></script>
+<style>
+  :root{
+    --cl-red:#E3350D; --cl-red-dk:#B5260A; --cl-blue:#3B9DF0; --cl-yellow:#FFCB05;
+    --cl-green:#3DBE5A; --cl-ink:#10162B; --cl-ink2:#1B2540; --cl-cream:#FFF7E6;
+  }
+  html,body{margin:0;padding:0;background:transparent;overflow:hidden;
+    font-family:'Trebuchet MS','Segoe UI',sans-serif;color:#fff;-webkit-font-smoothing:antialiased;}
+  .wrap{position:fixed;top:14px;right:14px;width:340px;}
+  /* top progress bar */
+  .topbar{display:flex;align-items:center;gap:10px;background:linear-gradient(90deg,var(--cl-red),var(--cl-red-dk));
+    border:3px solid #fff;border-radius:16px 16px 0 0;padding:9px 14px;box-shadow:0 6px 18px rgba(0,0,0,.35);}
+  .badge{width:26px;height:26px;border-radius:50%;background:var(--cl-yellow);border:3px solid #fff;flex:0 0 auto;
+    box-shadow:inset 0 -3px 0 rgba(0,0,0,.15);}
+  .title{font-weight:800;letter-spacing:1px;font-size:15px;text-shadow:0 2px 0 rgba(0,0,0,.25);}
+  .title small{display:block;font-size:9px;font-weight:700;letter-spacing:2px;opacity:.9;}
+  .pack{margin-left:auto;background:rgba(0,0,0,.22);border-radius:10px;padding:3px 9px;font-weight:800;font-size:13px;}
+  /* board */
+  .board{background:linear-gradient(180deg,var(--cl-ink),var(--cl-ink2));border:3px solid #fff;border-top:0;
+    border-radius:0 0 16px 16px;padding:8px;box-shadow:0 10px 26px rgba(0,0,0,.4);}
+  .row{display:flex;align-items:center;gap:9px;padding:7px 9px;margin:5px 0;border-radius:11px;
+    background:rgba(255,255,255,.06);border:2px solid transparent;transition:transform .25s,background .25s;}
+  .row.me{background:rgba(255,203,5,.16);border-color:var(--cl-yellow);}
+  .rank{width:24px;height:24px;flex:0 0 auto;border-radius:8px;display:grid;place-items:center;
+    font-weight:900;font-size:13px;color:var(--cl-ink);background:#cfd8ea;}
+  .row:nth-child(1) .rank{background:var(--cl-yellow);}
+  .row:nth-child(2) .rank{background:#C8CDD4;}
+  .row:nth-child(3) .rank{background:#CD7F32;color:#fff;}
+  .name{font-weight:700;font-size:14px;flex:1 1 auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .score{font-weight:900;font-size:16px;font-variant-numeric:tabular-nums;}
+  .delta{min-width:42px;text-align:right;font-weight:800;font-size:12px;color:var(--cl-green);}
+  .delta.zero{color:#7d88a6;}
+  .arrow{font-size:11px;width:14px;text-align:center;}
+  .up{color:var(--cl-green);} .down{color:var(--cl-red);} .flat{color:#7d88a6;}
+  .pulse{animation:pop .5s ease;}
+  @keyframes pop{0%{transform:scale(1);}40%{transform:scale(1.06);}100%{transform:scale(1);}}
+  .phase{margin-top:6px;text-align:center;font-size:10px;font-weight:800;letter-spacing:2px;
+    color:var(--cl-yellow);text-transform:uppercase;}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="badge"></div>
+      <div class="title">RIP NIGHT<small>COLLECTOR LEAGUE</small></div>
+      <div class="pack" id="pack">PACK 0/0</div>
+    </div>
+    <div class="board" id="board"></div>
+    <div class="phase" id="phase">WAITING FOR SLATE</div>
+  </div>
+
+<script>
+(function(){
+  "use strict";
+  var PHASES = ["WAITING","LINEUP OPEN","LINEUP LOCKED","LIVE","PAUSED","FINALIZING","FINAL","CANCELLED"];
+  var board = document.getElementById('board');
+  var packEl = document.getElementById('pack');
+  var phaseEl = document.getElementById('phase');
+  var lastScores = {};   // name -> last score, for pulse detection
+
+  function renderStandings(rows){
+    board.innerHTML = '';
+    rows.forEach(function(r){
+      var row = document.createElement('div');
+      row.className = 'row' + (r.me ? ' me' : '');
+      var changed = lastScores[r.name] !== undefined && lastScores[r.name] !== r.score;
+      if (changed) row.classList.add('pulse');
+      lastScores[r.name] = r.score;
+
+      var arrow = r.rankChange > 0 ? '<span class="arrow up">&#9650;</span>'
+                : r.rankChange < 0 ? '<span class="arrow down">&#9660;</span>'
+                : '<span class="arrow flat">&#8226;</span>';
+      var deltaTxt = r.delta > 0 ? '+' + r.delta : (r.delta === 0 ? '+0' : String(r.delta));
+      row.innerHTML =
+        '<div class="rank">' + r.rank + '</div>' + arrow +
+        '<div class="name">' + escapeHtml(r.name) + '</div>' +
+        '<div class="score">' + r.score + '</div>' +
+        '<div class="delta' + (r.delta ? '' : ' zero') + '">' + deltaTxt + '</div>';
+      board.appendChild(row);
+    });
+  }
+
+  function escapeHtml(s){ return String(s).replace(/[&<>"]/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+
+  function parseStandings(payload){
+    // payload: name~score~delta~rankChange | name~score~delta~rankChange ...
+    return payload.split('|').filter(Boolean).map(function(cell, i){
+      var p = cell.split('~');
+      return { rank:i+1, name:p[0]||'?', score:Number(p[1])||0,
+               delta:Number(p[2])||0, rankChange:Number(p[3])||0, me:false };
+    });
+  }
+
+  function handle(msgStr){
+    if (msgStr.indexOf('standings_') === 0){
+      renderStandings(parseStandings(msgStr.substring(10)));
+    } else if (msgStr.indexOf('pack_') === 0){
+      var p = msgStr.substring(5).split('_');
+      packEl.textContent = 'PACK ' + (p[0]||0) + '/' + (p[1]||0);
+    } else if (msgStr.indexOf('phase_') === 0){
+      var n = Number(msgStr.substring(6)) || 0;
+      phaseEl.textContent = PHASES[n] || 'LIVE';
+    } else if (msgStr.indexOf('you_') === 0){
+      // highlight the local player's row if present (matched by score line)
+      var parts = msgStr.substring(4).split('_');
+      highlightMe(Number(parts[0]) || 0);
+    }
+  }
+
+  function highlightMe(score){
+    var rows = board.querySelectorAll('.row');
+    rows.forEach(function(row){
+      var s = Number(row.querySelector('.score') && row.querySelector('.score').textContent);
+      row.classList.toggle('me', s === score);
+    });
+  }
+
+  // ---- Portals message listener (defensive: handle string OR JSON) ----
+  if (window.PortalsSdk && PortalsSdk.setMessageListener){
+    PortalsSdk.setMessageListener(function(message){
+      var msg = message;
+      if (typeof message === 'string'){
+        try { msg = JSON.parse(message); } catch(e){ msg = message; }   // underscore format is not JSON — keep string
+      }
+      var msgStr = (typeof msg === 'string') ? msg : JSON.stringify(msg);
+      handle(msgStr);
+    });
+    // ready handshake: ask the backend/room to push current state (late-join safe)
+    try {
+      PortalsSdk.sendMessageToUnity(JSON.stringify({
+        TaskName: 'scoreboard_ready', TaskTargetState: 'SetNotActiveToCompleted'
+      }));
+    } catch(e){}
+  }
+
+  // ---- standalone demo seed so the file renders on its own ----
+  if (!window.PortalsSdk){
+    handle('pack_8_20');
+    handle('phase_3');
+    handle('standings_Jason~940~265~2|Atlas~842~96~0|Kira~760~58~1|Nova~799~0~-1|Echo~415~12~0');
+  }
+})();
+</script>
+</body>
+</html>
