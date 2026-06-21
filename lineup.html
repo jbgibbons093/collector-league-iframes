@@ -1,185 +1,111 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<!--
-  Collector League — Rip Night LINEUP BUILDER (Portals iframe)
-  ---------------------------------------------------------------------------
-  Five-slot salary-cap lineup UI (plan section 5.3). Bright Pokemon palette,
-  ORIGINAL Collector League branding. Client-side salary check is for UX only —
-  the BACKEND re-validates salary and slot rules and is authoritative.
-
-  Options below are demo-seeded. In production they come from
-  GET /v1/contests/:id/options (frozen draft options) and the lock POSTs to
-  POST /v1/contests/:id/lineup/lock. On a successful lock we also advance the
-  room's "20_lineup_locked" task so the 3D venue reacts.
--->
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Collector League — Build Your Lineup</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rip Night — Build Your Lineup</title>
 <script src="https://portals-labs.github.io/portals-sdk/portals-sdk.js?v=10005456"></script>
+<script src="slate-data.js"></script>
+<script src="cl-kit.js"></script>
 <style>
-  :root{
-    --cl-red:#E3350D; --cl-red-dk:#B5260A; --cl-blue:#3B9DF0; --cl-yellow:#FFCB05;
-    --cl-green:#3DBE5A; --cl-purple:#A040A0; --cl-ink:#10162B; --cl-ink2:#1B2540; --cl-cream:#FFF7E6;
-  }
-  *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;background:transparent;font-family:'Trebuchet MS','Segoe UI',sans-serif;color:#fff;}
-  .panel{position:fixed;inset:0;margin:auto;width:min(680px,96vw);max-height:96vh;overflow:auto;
-    background:linear-gradient(180deg,var(--cl-ink),var(--cl-ink2));border:4px solid #fff;border-radius:22px;
-    box-shadow:0 18px 50px rgba(0,0,0,.5);}
-  header{display:flex;align-items:center;gap:12px;background:linear-gradient(90deg,var(--cl-red),var(--cl-red-dk));
-    padding:14px 18px;border-radius:18px 18px 0 0;border-bottom:4px solid #fff;}
-  .ball{width:34px;height:34px;border-radius:50%;background:radial-gradient(circle at 50% 38%,#fff 0 32%,var(--cl-yellow) 33% 100%);
-    border:3px solid #fff;box-shadow:0 3px 0 rgba(0,0,0,.2);flex:0 0 auto;}
-  h1{font-size:18px;margin:0;letter-spacing:1px;font-weight:900;text-shadow:0 2px 0 rgba(0,0,0,.25);}
-  h1 small{display:block;font-size:10px;letter-spacing:3px;opacity:.92;font-weight:700;}
-  .lock-timer{margin-left:auto;background:rgba(0,0,0,.25);border-radius:11px;padding:5px 11px;font-weight:800;font-size:14px;}
-  .body{padding:14px 18px 0;}
-  .slot{margin:0 0 14px;}
-  .slot h2{font-size:12px;letter-spacing:2px;color:var(--cl-yellow);margin:0 0 7px;text-transform:uppercase;}
-  .chips{display:flex;flex-wrap:wrap;gap:8px;}
-  .chip{cursor:pointer;border:2px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);
-    border-radius:12px;padding:8px 12px;font-weight:700;font-size:13px;display:flex;gap:8px;align-items:center;
-    transition:transform .12s,border-color .12s,background .12s;user-select:none;}
-  .chip:hover{transform:translateY(-2px);}
-  .chip .sal{font-size:11px;font-weight:900;background:rgba(0,0,0,.3);border-radius:8px;padding:1px 7px;color:var(--cl-yellow);}
-  .chip.sel{background:var(--cl-green);border-color:#fff;color:#06250f;}
-  .chip.sel .sal{background:rgba(0,0,0,.25);color:#fff;}
-  .chip.disabled{opacity:.4;cursor:not-allowed;}
-  footer{position:sticky;bottom:0;background:rgba(10,14,26,.96);border-top:4px solid #fff;
-    padding:12px 18px;display:flex;align-items:center;gap:14px;border-radius:0 0 18px 18px;}
-  .meter{flex:1 1 auto;}
-  .meter .stats{display:flex;gap:16px;font-weight:800;font-size:13px;margin-bottom:6px;font-variant-numeric:tabular-nums;}
-  .meter .stats b{color:var(--cl-yellow);}
-  .bar{height:10px;border-radius:6px;background:rgba(255,255,255,.12);overflow:hidden;}
-  .bar>div{height:100%;background:linear-gradient(90deg,var(--cl-green),var(--cl-yellow));transition:width .2s,background .2s;}
-  .bar.over>div{background:linear-gradient(90deg,var(--cl-red),#ff8a5c);}
-  .lockbtn{cursor:pointer;border:0;border-radius:14px;padding:13px 22px;font-weight:900;font-size:15px;letter-spacing:1px;
-    color:#fff;background:linear-gradient(180deg,#9aa3bd,#6f7896);box-shadow:0 5px 0 rgba(0,0,0,.25);}
-  .lockbtn.ready{background:linear-gradient(180deg,var(--cl-red),var(--cl-red-dk));cursor:pointer;}
-  .lockbtn:active{transform:translateY(3px);box-shadow:0 2px 0 rgba(0,0,0,.25);}
-  .nopurchase{text-align:center;font-size:9px;letter-spacing:2px;color:#8b95b3;padding:6px 0 10px;}
-  .locked-msg{display:none;text-align:center;padding:26px;}
-  .locked-msg h2{color:var(--cl-green);font-size:24px;margin:0 0 8px;}
-  .locked-msg p{color:#aeb7d2;font-size:13px;margin:4px 0;}
+  body{padding:0}
+  .wrap{max-width:760px;margin:0 auto}
+  .intro{background:rgba(255,255,255,.7);border-bottom:1px solid var(--line);padding:11px 16px;font-size:14px;font-weight:600;color:#4a3a44;line-height:1.4}
+  .intro b{color:#E3350D}
+  .body{display:flex;gap:14px;padding:14px}
+  .slots{flex:1;min-width:0;display:flex;flex-direction:column;gap:12px}
+  .side{width:236px;flex:none;position:sticky;top:14px;align-self:flex-start}
+  .slot{background:rgba(255,255,255,.78);border:1px solid #f0dde3;border-radius:14px;padding:11px 12px;backdrop-filter:blur(2px)}
+  .sh{font-family:'Baloo 2';font-weight:800;font-size:14px;color:#241a22;display:flex;align-items:center;gap:8px;margin-bottom:9px}
+  .sh .n{width:21px;height:21px;border-radius:50%;background:linear-gradient(160deg,#ff6a3d,#E3350D);color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center;flex:none;box-shadow:0 2px 6px rgba(227,53,13,.4)}
+  .sh em{font-style:normal;font-weight:600;font-size:11px;color:#9a8e95;margin-left:auto}
+  .opts{display:flex;flex-wrap:wrap;gap:7px}
+  .pcard{width:190px;margin:0 auto}
+  .meter{background:rgba(255,255,255,.82);border:2px solid #f0dde3;border-radius:12px;padding:10px 12px;margin-top:12px}
+  .meter .lab{display:flex;justify-content:space-between;font-weight:800;font-size:13px;color:#241a22}
+  .meter .lab .left{color:#2FA84C}
+  .meter .bar{height:9px;background:#efe4ea;border-radius:6px;margin-top:7px;overflow:hidden}
+  .meter .fill{height:100%;background:linear-gradient(90deg,#3DBE5A,#7be08f);border-radius:6px;transition:width .2s,background .2s}
+  .meter.over .fill{background:#E3350D}.meter.over .lab .left{color:#E3350D}
+  .meter .slots2{font-size:12px;color:#8a7f86;font-weight:700;margin-top:6px}
+  .lockwrap{margin-top:10px}
+  .note{font-size:11px;color:#9a8e95;text-align:center;margin-top:6px}
 </style>
 </head>
 <body>
-  <div class="panel" id="panel">
-    <header>
-      <div class="ball"></div>
-      <h1>BUILD YOUR LINEUP<small>RIP NIGHT &middot; COLLECTOR LEAGUE</small></h1>
-      <div class="lock-timer" id="timer">LOCK 05:00</div>
-    </header>
-    <div class="body" id="slots"></div>
-    <footer>
-      <div class="meter">
-        <div class="stats">
-          <span><b id="filled">0</b>/5 slots</span>
-          <span><b id="salary">0</b>/<span id="cap">100</span> salary</span>
-          <span>Projected <b id="proj">0</b></span>
-        </div>
-        <div class="bar" id="bar"><div style="width:0%"></div></div>
+<div class="wrap">
+<div class="cl-panel">
+  <div class="cl-bar"><span class="t">BUILD YOUR LINEUP</span><span class="s">Rip Night</span></div>
+  <div class="intro">Pick <b>one option in each of the 5 categories</b>. The host opens real card packs live, and you <b>score when a revealed card matches your picks</b>. Stay under <b>100 credits</b>.</div>
+  <div class="body">
+    <div class="slots" id="slots"></div>
+    <div class="side">
+      <div class="pcard" id="pcard"></div>
+      <div class="meter" id="meter">
+        <div class="lab"><span>Salary <b id="sal">0</b> / 100</span><span class="left" id="left">100 left</span></div>
+        <div class="bar"><div class="fill" id="fill" style="width:0%"></div></div>
+        <div class="slots2"><b id="filled">0</b> / 5 categories picked</div>
       </div>
-      <button class="lockbtn" id="lock" disabled>LOCK LINEUP</button>
-    </footer>
-    <div class="nopurchase">FREE TO PLAY &mdash; NO PURCHASE NECESSARY</div>
-    <div class="locked-msg" id="lockedMsg">
-      <h2>LINEUP LOCKED</h2>
-      <p id="lockedPicks"></p>
-      <p>Salary <b id="lockedSalary"></b>/100 &middot; watch the reveals on the main stage.</p>
+      <div class="lockwrap"><button id="lock" class="cl-btn lg" disabled>Pick all 5 to lock</button></div>
+      <div class="note">You can edit until the lock deadline. Locked lineups can't be changed.</div>
     </div>
   </div>
-
+</div>
+</div>
 <script>
 (function(){
-  "use strict";
-  var CAP = 100;
-  // Demo option pool — production pulls frozen options from the backend.
-  var SLOTS = [
-    { key:'MACHINE', name:'Machine', options:[
-      {id:'m_elite',label:'Elite',sal:24},{id:'m_legend',label:'Legendary',sal:28},{id:'m_grail',label:'Grail',sal:19} ]},
-    { key:'RARITY', name:'Rarity', options:[
-      {id:'r_com',label:'Common',sal:28},{id:'r_unc',label:'Uncommon',sal:23},{id:'r_rare',label:'Rare',sal:20},{id:'r_epic',label:'Epic',sal:10} ]},
-    { key:'VALUE', name:'Insured Value', options:[
-      {id:'v_100',label:'<$100',sal:26},{id:'v_249',label:'$100-249',sal:23},{id:'v_499',label:'$250-499',sal:20},{id:'v_999',label:'$500-999',sal:17},{id:'v_1k',label:'$1000+',sal:11} ]},
-    { key:'GRADE', name:'Grade', options:[
-      {id:'g_gem',label:'Gem 10',sal:30},{id:'g_m9',label:'Mint 9',sal:19},{id:'g_8',label:'8 or lower',sal:12},{id:'g_oth',label:'Other',sal:10} ]},
-    { key:'ERA', name:'Era', options:[
-      {id:'e_vint',label:'<=2005',sal:12},{id:'e_mid',label:'2006-15',sal:17},{id:'e_mod',label:'2016-21',sal:23},{id:'e_cur',label:'2022+',sal:28} ]}
+  var CAP=100;
+  var SLOTS=[
+    {key:'MACHINE',title:'Machine',sub:'which pack type opens',opts:[
+      {k:'elite',l:'Elite',cr:22},{k:'legendary',l:'Legendary',cr:24},{k:'grail',l:'Grail',cr:26}]},
+    {key:'RARITY',title:'Rarity',sub:'card pull rarity',opts:[
+      {k:'COMMON',l:'Common',cr:14,rar:'8A94A6'},{k:'UNCOMMON',l:'Uncommon',cr:18,rar:'3B7DF0'},
+      {k:'RARE',l:'Rare',cr:22,rar:'7A52F0'},{k:'EPIC',l:'Epic',cr:28,rar:'F5B400'}]},
+    {key:'VALUE',title:'Insured value',sub:'graded card USD value',opts:[
+      {k:'UNDER_250',l:'Under $250',cr:14},{k:'V250',l:'$250–499',cr:16},{k:'V500',l:'$500–999',cr:18},{k:'V1000',l:'$1,000+',cr:22}]},
+    {key:'GRADE',title:'Grade',sub:'PSA/CGC grade band',opts:[
+      {k:'GEM10',l:'Gem Mint 10',cr:22},{k:'MINT9',l:'Mint 9',cr:18},{k:'LOW',l:'8 or lower',cr:12}]},
+    {key:'ERA',title:'Era',sub:'year the card was printed',opts:[
+      {k:'VINTAGE',l:'Vintage',cr:18},{k:'MID',l:'Mid-era',cr:16},{k:'MODERN',l:'Modern',cr:18},{k:'CURRENT',l:'Current',cr:20}]}
   ];
-  // rough demo projection weights per option (production = simulator projection)
-  var PROJ = { r_epic:120, r_rare:70, r_unc:35, r_com:18, g_gem:60, v_1k:55, v_999:48, m_grail:40, e_vint:30 };
+  var pick={};
+  var slotsEl=document.getElementById('slots'), pcardEl=document.getElementById('pcard'),
+      salEl=document.getElementById('sal'), leftEl=document.getElementById('left'), fillEl=document.getElementById('fill'),
+      filledEl=document.getElementById('filled'), meterEl=document.getElementById('meter'), lockEl=document.getElementById('lock');
 
-  var picks = {};                 // slotKey -> option
-  var slotsEl = document.getElementById('slots');
-  var filledEl = document.getElementById('filled');
-  var salaryEl = document.getElementById('salary');
-  var projEl = document.getElementById('proj');
-  var barEl = document.getElementById('bar');
-  var lockBtn = document.getElementById('lock');
-  document.getElementById('cap').textContent = CAP;
-
-  SLOTS.forEach(function(slot){
-    var wrap = document.createElement('div'); wrap.className='slot';
-    var h = document.createElement('h2'); h.textContent = slot.name; wrap.appendChild(h);
-    var chips = document.createElement('div'); chips.className='chips';
-    slot.options.forEach(function(opt){
-      var c = document.createElement('div'); c.className='chip'; c.dataset.slot=slot.key; c.dataset.id=opt.id; c.dataset.sal=opt.sal;
-      c.innerHTML = opt.label + '<span class="sal">'+opt.sal+'</span>';
-      c.onclick = function(){ select(slot.key, opt, c, chips); };
-      chips.appendChild(c);
+  SLOTS.forEach(function(s,si){
+    var d=document.createElement('div'); d.className='slot';
+    d.innerHTML='<div class="sh"><span class="n">'+(si+1)+'</span>'+s.title+'<em>'+s.sub+'</em></div><div class="opts"></div>';
+    var o=d.querySelector('.opts');
+    s.opts.forEach(function(op){
+      var b=document.createElement('button'); b.className='cl-chip'; b.setAttribute('data-pick',s.key+'_'+op.k);
+      b.innerHTML=(op.rar?'<span class="dot" style="--rar:#'+op.rar+'"></span>':'')+op.l+'<span class="cr">'+op.cr+'cr</span>';
+      b.onclick=function(){ pick[s.key]=op; render(); };
+      op._el=b; o.appendChild(b);
     });
-    wrap.appendChild(chips); slotsEl.appendChild(wrap);
+    slotsEl.appendChild(d);
   });
 
-  function select(slotKey, opt, chip, chips){
-    chips.querySelectorAll('.chip').forEach(function(x){ x.classList.remove('sel'); });
-    chip.classList.add('sel');
-    picks[slotKey] = opt;
-    refresh();
+  function render(){
+    var sal=0,n=0;
+    SLOTS.forEach(function(s){ var p=pick[s.key]; s.opts.forEach(function(op){ op._el.classList.toggle('on',p===op); }); if(p){sal+=p.cr;n++;} });
+    salEl.textContent=sal; filledEl.textContent=n;
+    var left=CAP-sal; leftEl.textContent=(left<0?(-left)+' over':left+' left');
+    fillEl.style.width=Math.min(100,sal)+'%';
+    meterEl.classList.toggle('over',sal>CAP);
+    var P={ RARITY: pick.RARITY&&pick.RARITY.k, GRADE: pick.GRADE&&pick.GRADE.l, VALUE: pick.VALUE&&pick.VALUE.l, ERA: pick.ERA&&pick.ERA.l, MACHINE: pick.MACHINE&&pick.MACHINE.l };
+    pcardEl.innerHTML=CL.predictCard(P);
+    var ok=(n===5 && sal<=CAP);
+    lockEl.disabled=!ok;
+    lockEl.textContent = sal>CAP?'Over cap — remove a pick' : (n<5?'Pick all 5 to lock':'Lock lineup');
   }
-
-  function refresh(){
-    var keys = Object.keys(picks);
-    var sal = keys.reduce(function(s,k){ return s + picks[k].sal; }, 0);
-    var proj = keys.reduce(function(s,k){ return s + (PROJ[picks[k].id]||10); }, 0);
-    filledEl.textContent = keys.length;
-    salaryEl.textContent = sal;
-    projEl.textContent = proj;
-    var pct = Math.min(100, Math.round(sal/CAP*100));
-    barEl.firstElementChild.style.width = pct + '%';
-    barEl.classList.toggle('over', sal > CAP);
-    var ready = keys.length === 5 && sal <= CAP;
-    lockBtn.disabled = !ready;
-    lockBtn.classList.toggle('ready', ready);
-  }
-
-  lockBtn.onclick = function(){
-    if (lockBtn.disabled) return;
-    var sal = Object.keys(picks).reduce(function(s,k){ return s+picks[k].sal; },0);
-    // Tell the room the lineup is locked (3D venue reacts). Backend lock is separate + authoritative.
-    if (window.PortalsSdk && PortalsSdk.sendMessageToUnity){
-      try {
-        PortalsSdk.sendMessageToUnity(JSON.stringify({
-          TaskName:'20_lineup_locked', TaskTargetState:'SetNotActiveToCompleted' }));
-      } catch(e){}
-    }
-    document.getElementById('lockedPicks').textContent =
-      SLOTS.map(function(s){ return picks[s.key].label; }).join('  /  ');
-    document.getElementById('lockedSalary').textContent = sal;
-    document.querySelector('.body').style.display='none';
-    document.querySelector('footer').style.display='none';
-    document.getElementById('lockedMsg').style.display='block';
+  lockEl.onclick=function(){
+    if(lockEl.disabled) return;
+    var payload=SLOTS.map(function(s){return s.key+':'+pick[s.key].k;}).join(',');
+    if(window.PortalsSdk){ try{ PortalsSdk.sendMessageToUnity(JSON.stringify({type:'lineup_lock',lineup:payload})); }catch(e){} try{ PortalsSdk.closeIframe(); }catch(e){} }
+    lockEl.textContent='Lineup locked'; lockEl.disabled=true;
   };
-
-  // Simple visual lock countdown (display only; server time is authoritative).
-  var secs = 300;
-  setInterval(function(){
-    if (secs<=0) return;
-    secs--; var m=Math.floor(secs/60), s=secs%60;
-    document.getElementById('timer').textContent = 'LOCK ' + (m<10?'0':'')+m + ':' + (s<10?'0':'')+s;
-  }, 1000);
+  render();
 })();
 </script>
 </body>
