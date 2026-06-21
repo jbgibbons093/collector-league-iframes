@@ -34,6 +34,7 @@
     ".cl-badges{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}",
     ".cl-badge{font-size:10px;font-weight:800;border-radius:7px;padding:2px 6px;color:#fff;letter-spacing:.2px;white-space:nowrap;box-shadow:0 1px 0 rgba(0,0,0,.2)}",
     ".cl-badge.g{background:var(--rGrade)}.cl-badge.v{background:var(--rValue)}.cl-badge.e{background:var(--rEra)}",
+    ".cl-card .val{display:inline-block;font-family:'Baloo 2';font-weight:800;font-size:14px;background:linear-gradient(#ffe07a,#e0922a);color:#3a2600;padding:2px 10px;border-radius:8px;box-shadow:0 1px 0 rgba(0,0,0,.2);text-shadow:none}",
     /* rarity frame palettes */
     ".cl-card.r-EPIC{--fr1:#fff3c4;--fr2:#cf9a1c;--glow:rgba(245,180,0,.9);--slabink:#5a4200}",
     ".cl-card.r-RARE{--fr1:#ece0ff;--fr2:#5e34c4;--glow:rgba(122,82,240,.72);--slabink:#fff}",
@@ -67,11 +68,15 @@
     if (opts.ghost) return '<div class="cl-card myst"><div class="art"><div class="mono"><span>?</span></div></div><div class="meta"><div class="nm">' + (opts.label || 'Pick to preview') + '</div></div></div>';
     var rar = '#' + c.rarityColor;
     if (opts.facedown) return '<div class="cl-card down" style="--rar:' + rar + '"><div class="slab"></div><div class="art"><div class="mono"><span>CL</span></div></div><div class="meta"></div></div>';
+    var slab = '<span class="rr" style="margin-left:0">' + c.rarity + '</span>' + (c.grade ? '<span class="g2" style="margin-left:auto">' + c.grade + '</span>' : '');
+    var badges = (c.valueLabel ? '<span class="val">' + c.valueLabel + '</span>' : '')
+      + (c.gradeBand ? '<span class="cl-badge g">' + c.gradeBand + '</span>' : '')
+      + (c.era ? '<span class="cl-badge e">' + c.era + (c.year ? ' ' + c.year : '') + '</span>' : '')
+      + (c.machine ? '<span class="cl-badge v">' + c.machine + '</span>' : '');
     return '<div class="cl-card r-' + c.rarityKey + '" style="--rar:' + rar + '">'
-      + '<div class="slab"><span>' + c.grade + '</span><span class="g2">' + c.gradeBand + '</span><span class="rr">' + c.rarity + '</span></div>'
+      + '<div class="slab">' + slab + '</div>'
       + '<div class="art"><img src="' + c.img + '" alt="' + c.name + '" loading="lazy"><div class="holo"></div><div class="spk"></div></div>'
-      + '<div class="meta"><div class="nm">' + c.name + '</div>'
-      + '<div class="cl-badges"><span class="cl-badge v">' + c.valueLabel + '</span><span class="cl-badge e">' + c.era + ' ' + c.year + '</span><span class="cl-badge g">' + c.machine + '</span></div></div></div>';
+      + '<div class="meta"><div class="nm">' + c.name + '</div><div class="cl-badges">' + badges + '</div></div></div>';
   }
 
   // Builder MYSTERY card: shows the chosen attributes as a "?" prediction card.

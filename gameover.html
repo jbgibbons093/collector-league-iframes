@@ -3,28 +3,28 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Rip Night — Final Results</title>
+<title>Rip Night — Week Results</title>
 <script src="https://portals-labs.github.io/portals-sdk/portals-sdk.js?v=10005456"></script>
-<script src="slate-data.js"></script>
+<script src="league-data.js"></script>
 <script src="cl-kit.js"></script>
 <style>
   body{padding:0}
-  .wrap{max-width:560px;margin:0 auto;position:relative}
-  .champ{display:flex;gap:16px;align-items:center;padding:16px}
-  .champ .hero{width:152px;flex:none}
-  .champ .who{flex:1;min-width:0}
-  .champ .lbl{font-family:'Baloo 2';font-weight:800;color:#E3350D;letter-spacing:2px;font-size:13px}
-  .champ .nm{font-family:'Baloo 2';font-weight:800;font-size:42px;line-height:1;background:linear-gradient(90deg,#E3350D,#FFCB05);-webkit-background-clip:text;background-clip:text;color:transparent}
-  .champ .sub{color:#8a7f86;font-weight:700;font-size:13px;margin-top:8px}
-  .cotn{font-size:11px;font-weight:800;color:#a07b00;margin-top:10px;background:#fff7d6;border-radius:8px;padding:4px 8px;display:inline-block}
-  .bh{font-family:'Baloo 2';font-weight:800;font-size:12px;letter-spacing:1px;color:#8a7f86;padding:4px 16px}
+  .wrap{max-width:600px;margin:0 auto;position:relative}
+  .top{display:flex;gap:16px;align-items:center;padding:16px}
+  .top .who{flex:1;min-width:0}
+  .lbl{font-family:'Baloo 2';font-weight:800;color:#E3350D;letter-spacing:2px;font-size:13px}
+  .nm{font-family:'Baloo 2';font-weight:800;font-size:40px;line-height:1;background:linear-gradient(90deg,#E3350D,#FFCB05);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .sub{color:#8a7f86;font-weight:700;font-size:13px;margin-top:8px}
+  .tv{display:inline-block;margin-top:10px;font-family:'Baloo 2';font-weight:800;font-size:16px;color:#a06600;background:#fff7d6;border:1px solid #ffe49a;border-radius:9px;padding:4px 11px}
+  .teamh{font-family:'Baloo 2';font-weight:800;font-size:12px;letter-spacing:1px;color:#8a7f86;padding:2px 16px}
+  .team{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;padding:4px 16px 6px}
+  .bh{font-family:'Baloo 2';font-weight:800;font-size:12px;letter-spacing:1px;color:#8a7f86;padding:8px 16px 2px}
   .board{padding:0 14px}
-  .row{display:flex;align-items:center;gap:10px;padding:8px 11px;border-radius:11px;margin-top:5px;background:#fff;border:1px solid #f3e6eb}
-  .row.me{background:#fff4f2;border-color:#ffc2b6}
-  .row .rk{width:24px;height:24px;border-radius:50%;background:#efe7eb;color:#7a6f76;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;flex:none}
+  .row{display:flex;align-items:center;gap:10px;padding:7px 11px;border-radius:11px;margin-bottom:4px;background:#fff;border:1px solid #f3e6eb}
+  .row .rk{width:23px;height:23px;border-radius:50%;background:#efe7eb;color:#7a6f76;font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center;flex:none}
   .row.t1 .rk{background:#FFCB05;color:#5a4500}.row.t2 .rk{background:#cdd3da}.row.t3 .rk{background:#e6a062;color:#fff}
-  .row .nm{flex:1;font-weight:700;font-size:15px;color:#2a1f28}
-  .row .sc{font-weight:800;font-size:17px;color:#E3350D;font-variant-numeric:tabular-nums}
+  .row .nm2{flex:1;font-weight:700;font-size:15px;color:#2a1f28}
+  .row .pt{font-weight:800;font-size:14px;color:#5a4500;background:#fff7d6;border:1px solid #ffe49a;border-radius:8px;padding:2px 9px}
   .cta{display:flex;gap:10px;padding:14px 16px 18px}
   .conf{position:fixed;top:-20px;width:9px;height:14px;border-radius:2px;animation:fall linear forwards;z-index:50}
   @keyframes fall{to{transform:translateY(105vh) rotate(540deg)}}
@@ -33,57 +33,44 @@
 <body>
 <div class="wrap">
 <div class="cl-panel">
-  <div class="cl-bar"><span class="t">TONIGHT'S CHAMPION</span><span class="s">Rip Night &middot; Final</span></div>
-  <div class="champ">
-    <div class="hero" id="hero"></div>
+  <div class="cl-bar"><span class="t" id="title">WEEK CHAMPION</span><span class="s">Rip Night</span></div>
+  <div class="top">
     <div class="who">
-      <div class="lbl">WINNER</div>
+      <div class="lbl">HIGHEST TEAM VALUE THIS WEEK</div>
       <div class="nm" id="winner">&mdash;</div>
-      <div class="sub" id="sub"></div>
-      <div class="cotn" id="cotn"></div>
+      <div class="tv" id="tv"></div>
+      <div class="sub">+1 season point</div>
     </div>
   </div>
-  <div class="bh">FINAL STANDINGS</div>
+  <div class="teamh">WINNING TEAM</div>
+  <div class="team" id="team"></div>
+  <div class="bh">SEASON LEADERBOARD</div>
   <div class="board" id="board"></div>
   <div class="cta"><button class="cl-btn ghost" id="share">Share result</button><button class="cl-btn" id="next">Close</button></div>
 </div>
 </div>
 <script>
 (function(){
-  var SLATE=window.CL_SLATE||[];
-  var params=new URLSearchParams(location.search);
-  var winnerEl=document.getElementById('winner'), subEl=document.getElementById('sub'), cotnEl=document.getElementById('cotn'),
-      boardEl=document.getElementById('board'), heroEl=document.getElementById('hero');
-  var me=params.get('me')||'';
+  var POOL=window.CL_POOL||[], byId={}; POOL.forEach(function(c){byId[c.id]=c;});
+  var byName={}; POOL.forEach(function(c){byName[c.name]=c;});
+  var wk=window.CL_WEEK||{n:1,rows:[]}, season=window.CL_SEASON||[];
+  var winnerEl=document.getElementById('winner'), tvEl=document.getElementById('tv'), teamEl=document.getElementById('team'),
+      boardEl=document.getElementById('board'), titleEl=document.getElementById('title');
 
-  // Card of the night = highest insured value pulled
-  var cotn=SLATE.slice().sort(function(a,b){return b.value-a.value;})[0];
-  if(cotn){ heroEl.innerHTML=CL.card(cotn); cotnEl.textContent='Card of the night: '+cotn.name+' '+cotn.valueLabel; }
-
-  function setWinner(w){ if(w) winnerEl.textContent=w; }
-  setWinner(params.get('winner'));
-
-  function renderBoard(rows){
-    boardEl.innerHTML=rows.map(function(r,i){
-      var t=i<3?(' t'+(i+1)):'', mine=(me&&r.name===me)?' me':'';
-      return '<div class="row'+t+mine+'"><div class="rk">'+(i+1)+'</div><div class="nm">'+r.name+'</div><div class="sc">'+r.score+'</div></div>';
-    }).join('');
-    if(rows[0]) setWinner(rows[0].name);
-    if(me){ var idx=rows.findIndex(function(r){return r.name===me;}); if(idx>=0) subEl.textContent='You finished #'+(idx+1)+' of '+rows.length+' — '+rows[idx].score+' pts'; }
-    else subEl.textContent=rows.length+' players · top score takes the night';
+  titleEl.textContent='WEEK '+wk.n+' CHAMPION';
+  var top=wk.rows&&wk.rows[0];
+  if(top){
+    winnerEl.textContent=top.player;
+    tvEl.textContent='Team value $'+top.value.toLocaleString();
+    teamEl.innerHTML=(top.team||[]).map(function(nm){ var c=byName[nm]; return '<div>'+(c?CL.card(c):'')+'</div>'; }).join('');
   }
-  function parseScores(p){ return p.split('|').map(function(x){var a=x.split('~');return{name:a[0]||'?',score:Number(a[1])||0};}); }
-  function confetti(){ var c=['#E3350D','#FFCB05','#30D0E0','#7A52F0','#3DBE5A']; for(var i=0;i<70;i++){ var d=document.createElement('div'); d.className='conf'; d.style.left=(Math.random()*100)+'vw'; d.style.background=c[i%c.length]; d.style.animationDuration=(2.4+Math.random()*2.2)+'s'; d.style.animationDelay=(Math.random()*1.0)+'s'; document.body.appendChild(d); (function(n){setTimeout(function(){n.remove();},6500);})(d); } }
+  boardEl.innerHTML=season.map(function(r,i){
+    return '<div class="row'+(i<3?' t'+(i+1):'')+'"><div class="rk">'+(i+1)+'</div><div class="nm2">'+r.player+'</div><div class="pt">'+r.pts+' pt'+(r.pts===1?'':'s')+'</div></div>';
+  }).join('');
 
+  function confetti(){ var col=['#E3350D','#FFCB05','#30D0E0','#7A52F0','#3DBE5A']; for(var i=0;i<70;i++){ var d=document.createElement('div'); d.className='conf'; d.style.left=(Math.random()*100)+'vw'; d.style.background=col[i%col.length]; d.style.animationDuration=(2.4+Math.random()*2.2)+'s'; d.style.animationDelay=(Math.random()*1.0)+'s'; document.body.appendChild(d); (function(n){setTimeout(function(){n.remove();},6500);})(d); } }
   document.getElementById('next').onclick=function(){ if(window.PortalsSdk&&PortalsSdk.closeIframe){try{PortalsSdk.closeIframe();}catch(e){}} };
-  document.getElementById('share').onclick=function(){ var w=winnerEl.textContent; var t='Rip Night on Collector League — '+w+' took the night!'; if(navigator.share){navigator.share({text:t}).catch(function(){});}else{try{navigator.clipboard.writeText(t);}catch(e){}} };
-
-  if(window.PortalsSdk&&PortalsSdk.setMessageListener){
-    PortalsSdk.setMessageListener(function(m){var s=(typeof m==='string')?m:JSON.stringify(m);try{var j=JSON.parse(m);if(typeof j==='string')s=j;}catch(e){} if(s.indexOf('scores_')===0){renderBoard(parseScores(s.substring(7)));confetti();} else if(s.indexOf('winner_')===0){setWinner(s.substring(7).split('_')[0]);}});
-    try{PortalsSdk.sendMessageToUnity(JSON.stringify({TaskName:'gameover_ready',TaskTargetState:'SetNotActiveToCompleted'}));}catch(e){}
-  }
-  // standalone seed
-  renderBoard(parseScores('Jason~2075|Atlas~1371|Echo~1223|Kira~734|Nova~212'));
+  document.getElementById('share').onclick=function(){ var t='Rip Night — '+winnerEl.textContent+' won week '+wk.n+'!'; if(navigator.share){navigator.share({text:t}).catch(function(){});}else{try{navigator.clipboard.writeText(t);}catch(e){}} };
   confetti();
 })();
 </script>
